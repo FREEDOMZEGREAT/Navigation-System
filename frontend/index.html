@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DTU Campus Navigation System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="notification-system.js"></script>
+</head>
+<body>
+    <div id="bg-slideshow" aria-hidden="true"></div>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <!-- Site logo: place a file at `frontend/asset/logo.png` or change the src below -->
+                    <img id="site-logo" src="asset/dtu-logo.jpg" alt="DTU Logo" style="width:44px;height:44px;object-fit:cover;border-radius:8px;display:block;" onerror="this.style.display='none'" />
+                    <i class="fas fa-map-marked-alt" aria-hidden="true" style="display:inline-block;vertical-align:middle;margin-left:6px;color:white;"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>DTU Campus Navigation</h1>
+                    <p>Find Your Way Around Campus</p>
+                </div>
+            </div>
+                
+            <nav>
+                <ul>
+                    <li><a href="#" class="nav-link active" data-page="home" data-i18n="nav.home">Home</a></li>
+                    <li><a href="#" class="nav-link" data-page="map" data-i18n="nav.map">Campus Map</a></li>
+                    <li><a href="#" class="nav-link" data-page="directions" data-i18n="nav.directions">Directions</a></li>
+                    <li><a href="#" class="nav-link" data-page="feedback" data-i18n="nav.feedback">Feedback</a></li>
+                    <li><a href="#" class="nav-link" data-page="about" data-i18n="nav.about">About</a></li>
+                </ul>
+            </nav>
+            
+            <div class="user-controls">
+                <div class="language-selector">
+                    <i class="fas fa-globe"></i>
+                    <select id="language-select">
+                        <option value="en">English</option>
+                        <option value="am">አማርኛ</option>
+                        <option value="ti">ትግርኛ</option>
+                        <option value="om">Afaan Oromoo</option>
+                    </select>
+                </div>
+                
+                <div class="notification-bell dropdown" id="notification-bell" style="position: relative;">
+                    <button class="btn btn-link p-0" id="notificationToggle" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative;">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-count" id="notification-count" style="display: none;">0</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" id="notifications-dropdown" style="min-width: 300px; max-width: 400px; max-height: 400px; overflow-y: auto;">
+                        <li><h6 class="dropdown-header">Notifications</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="no-notifications"><a class="dropdown-item" href="#" style="color: #999; cursor: default;">No notifications</a></li>
+                    </ul>
+                </div>
+                
+                <div class="admin-login" id="admin-login">
+                    <button class="btn btn-primary" id="admin-btn">
+                        <i class="fas fa-user-shield"></i> Admin
+                    </button>
+                </div>
+
+                <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home-hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h2 data-i18n="hero.title">Debre Tabor University — Campus Navigation</h2>
+            <p data-i18n="hero.subtitle">Explore campus buildings, get real-time routing, and discover points of interest.</p>
+            <div class="hero-actions">
+                <button class="btn btn-primary" id="hero-open-map" data-i18n="hero.open_map">Open Campus Map</button>
+                <button class="btn btn-outline" id="hero-learn-more" data-i18n="hero.learn_more">Learn More</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="search-container">
+                <h3 data-i18n="search.find_route"><i class="fas fa-route"></i> Find Your Route</h3>
+                
+                <div class="location-input-group">
+                    <label for="start-select"><i class="fas fa-location-arrow"></i> <span data-i18n="selection.start_label">Starting Point</span></label>
+                    <div class="location-input">
+                            <input type="hidden" id="start-point-id" />
+                            <label for="start-select" style="font-size:0.95rem;color:#333; display:block; margin-bottom:6px;">Choose starting point</label>
+                            <select id="start-select" style="width:100%; padding:8px; margin-top:0; border-radius:8px;">
+                                <option value="current">Current Location</option>
+                                <option value="">Select starting point...</option>
+                            </select>
+
+                            <div id="start-selection-details" class="selection-details" style="display:none; margin-top:10px; background:#f9f9f9; padding:8px; border-radius:6px;">
+                                <div style="font-weight:600;" id="start-selection-name"></div>
+                                <div style="font-size:0.9rem;color:#555;" id="start-selection-addr"></div>
+                                <div style="margin-top:8px; display:flex; gap:8px;">
+                                    <button class="btn btn-sm btn-outline" id="start-set-destination" data-i18n="selection.set_as_destination">Set as Destination</button>
+                                    <button class="btn btn-sm btn-secondary" id="start-clear-selection" data-i18n="selection.clear_selection">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                
+                <div class="location-input-group">
+                    <label for="end-select"><i class="fas fa-map-marker-alt"></i> <span data-i18n="selection.end_label">Destination Point</span></label>
+                    <div class="location-input">
+                        <input type="hidden" id="end-point-id" />
+                        <label for="end-select" style="font-size:0.95rem;color:#333; display:block; margin-bottom:6px;">Choose destination</label>
+                        <select id="end-select" style="width:100%; padding:8px; margin-top:0; border-radius:8px;">
+                            <option value="">Select destination...</option>
+                        </select>
+
+                        <div id="end-selection-details" class="selection-details" style="display:none; margin-top:10px; background:#f9f9f9; padding:8px; border-radius:6px;">
+                            <div style="font-weight:600;" id="end-selection-name"></div>
+                            <div style="font-size:0.9rem;color:#555;" id="end-selection-addr"></div>
+                            <div style="margin-top:8px; display:flex; gap:8px;">
+                                <button class="btn btn-sm btn-primary" id="end-set-start" data-i18n="selection.set_as_start">Set as Starting Point</button>
+                                <button class="btn btn-sm btn-secondary" id="end-clear-selection" data-i18n="selection.clear_selection">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                
+                <button class="calculate-route-btn" id="calculate-route-btn">
+                    <i class="fas fa-directions"></i>
+                    <span id="calculate-route-text" data-i18n="search.calculate_route">Calculate Route</span>
+                    <div class="loading" id="calculate-route-loading" style="display: none;"></div>
+                </button>
+                <button class="calculate-route-btn" id="live-route-btn" style="margin-top:8px; background:linear-gradient(135deg,#2b9348,#57c5b6);">
+                    <i class="fas fa-walking"></i>
+                    <span id="live-route-text">Live Routing</span>
+                </button>
+            </div>
+
+            <div class="category-filter">
+                <h3 data-i18n="categories.title"><i class="fas fa-filter"></i> Categories</h3>
+                <div class="category-list" id="category-list">
+                    <!-- All Locations removed per request: use explicit categories only -->
+                    <div class="category-item" data-category="academic">
+                        <div class="category-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <span data-i18n="categories.academic">Academic Blocks</span>
+                    </div>
+                    <div class="category-item" data-category="administrative">
+                        <div class="category-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <span data-i18n="categories.administrative">Administrative</span>
+                    </div>
+                    <div class="category-item" data-category="services">
+                        <div class="category-icon">
+                            <i class="fas fa-concierge-bell"></i>
+                        </div>
+                        <span data-i18n="categories.services">Services</span>
+                    </div>
+                    <div class="category-item" data-category="recreational">
+                        <div class="category-icon">
+                            <i class="fas fa-running"></i>
+                        </div>
+                        <span data-i18n="categories.recreational">Recreational</span>
+                    </div>
+                </div>
+
+                <!-- Category POI list: populated after selecting a category -->
+                <div id="category-poi-list" style="margin-top:12px;">
+                    <!-- populated dynamically -->
+                </div>
+
+                <div class="quick-links">
+                    <h3 data-i18n="quick_links.title"><i class="fas fa-bolt"></i> Quick Links</h3>
+                    <div class="quick-links-list" id="quick-links-list">
+                        <div class="quick-link" data-location="library">
+                            <div class="quick-link-icon">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <span data-i18n="quick_links.library">Main Library</span>
+                        </div>
+                        <div class="quick-link" data-location="cafeteria">
+                            <div class="quick-link-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <span data-i18n="quick_links.cafeteria">Cafeteria</span>
+                        </div>
+                        <div class="quick-link" data-location="admin">
+                            <div class="quick-link-icon">
+                                <i class="fas fa-landmark"></i>
+                            </div>
+                            <span data-i18n="quick_links.admin">Admin Building</span>
+                        </div>
+                        <div class="quick-link" data-location="student_center">
+                            <div class="quick-link-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span data-i18n="quick_links.student_center">Student Center</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map">
+                <!-- Map will be loaded here -->
+            </div>
+            <div class="map-controls">
+                <button class="map-control" id="zoom-in" title="Zoom In">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="map-control" id="zoom-out" title="Zoom Out">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="map-control" id="current-location" title="My Location">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
+                <button class="map-control" id="satellite-view" title="Satellite View">
+                    <i class="fas fa-satellite"></i>
+                </button>
+            </div>
+            <!-- Distance Countdown Overlay -->
+            <div id="distance-countdown-overlay" class="distance-countdown-overlay" style="display: none;">
+                <div class="distance-countdown-content">
+                    <div class="distance-value" id="distance-countdown-value">--</div>
+                    <div class="distance-label">Remaining</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Route Information Panel -->
+    <div class="route-info" id="route-info">
+        <div class="route-header">
+            <h2 class="route-title" data-i18n="route.title"><i class="fas fa-route"></i> Route Information</h2>
+            <button class="btn btn-primary" id="save-route-btn">
+                <i class="fas fa-bookmark"></i> Save Route
+            </button>
+        </div>
+        
+        <div id="route-error-message" class="error-message" style="display: none;"></div>
+        
+        <div class="route-details">
+            <div class="route-detail">
+                <div class="value" id="route-distance">--</div>
+                <div class="label" data-i18n="route.distance">Distance</div>
+            </div>
+            <div class="route-detail">
+                <div class="value" id="route-time">--</div>
+                <div class="label" data-i18n="route.estimated_time">Estimated Time</div>
+            </div>
+            <div class="route-detail">
+                <div class="value" id="route-type">--</div>
+                <div class="label" data-i18n="route.type">Route Type</div>
+            </div>
+        </div>
+        
+        <div class="route-instructions">
+            <h4><i class="fas fa-list-ol"></i> Step-by-Step Directions</h4>
+            <ol class="instructions-list" id="instructions-list">
+                <li class="instruction">Select starting point and destination to calculate route</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- POI Details Modal -->
+    <div id="poi-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="poi-modal-title">Location Details</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body" id="poi-modal-body">
+                <!-- POI details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div class="login-panel" id="admin-login-panel" style="display:none;">
+        <div class="login-header">
+            <h2><i class="fas fa-user-shield"></i> Admin Login</h2>
+            <p>Enter admin credentials</p>
+        </div>
+        <div id="admin-login-message"></div>
+        <div class="login-form active" id="admin-login-form">
+            <div class="form-group">
+                <label for="admin-username">Username or Email</label>
+                <input type="text" id="admin-username" placeholder="Enter admin username or email">
+            </div>
+            <div class="form-group">
+                <label for="admin-password">Password</label>
+                <input type="password" id="admin-password" placeholder="Enter password">
+            </div>
+            <button class="btn btn-primary" id="admin-login-submit-btn" style="width: 100%;">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard Panel (hidden until admin logs in) -->
+    <div id="admin-panel" style="display: none;" class="admin-panel">
+        <div class="admin-header">
+            <h2><i class="fas fa-user-shield"></i> Admin Dashboard</h2>
+            <div id="admin-welcome" style="font-weight: 600; margin-top: 6px;">Welcome, Admin</div>
+            <div id="admin-stats" style="margin-left:16px; margin-top:6px; font-size:0.95rem; color:#333;">
+                <strong>Total Users:</strong> <span id="admin-user-count">--</span>
+                &nbsp;•&nbsp;
+                <strong>Active:</strong> <span id="admin-active-count">--</span>
+            </div>
+        </div>
+
+        <div class="admin-actions">
+            <button class="btn btn-secondary" id="admin-logout-btn" style="margin-right: 8px;">Logout</button>
+            <button class="btn btn-warning" id="admin-broadcast-btn" style="margin-right: 8px;">Notification</button>
+            <button class="btn btn-success" id="admin-update-map-btn" style="margin-right: 8px;">Update Map</button>
+            <button class="btn btn-info" id="admin-poi-management-btn" style="margin-right: 8px;">Manage POIs</button>
+                <button class="btn btn-outline" id="admin-change-password-btn" style="margin-right: 8px;">Change Password</button>
+                <button class="btn btn-dark" id="admin-edit-bounds-btn" style="margin-right: 8px;">Edit Bounds</button>
+            <button class="btn btn-primary" id="admin-feedback-btn" style="margin-left:8px; position:relative;">Feedback <span id="admin-feedback-badge" style="display:none; position:absolute; top:-6px; right:-8px; background:#e74c3c; color:#fff; border-radius:12px; padding:2px 6px; font-size:0.75rem;">0</span></button>
+        </div>
+
+        <div class="admin-body" style="margin-top: 16px;">
+                <p>Use the actions above to manage users and perform admin tasks.</p>
+                <div id="admin-notifications" style="margin-top:8px;"></div>
+                <div id="admin-broadcasts-section" style="margin-top:12px; display:block;">
+                    <h4>Notifications</h4>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                        <button id="admin-broadcast-refresh" class="btn btn-sm btn-outline">Edit Notification</button>
+                        <button id="admin-broadcast-new" class="btn btn-sm btn-primary">New Notification</button>
+                    </div>
+                    <div id="admin-broadcasts-list" style="max-height:220px; overflow:auto; border:1px solid #eee; border-radius:6px; padding:8px;">Loading broadcasts...</div>
+                </div>
+
+                <!-- Feedback Section -->
+                <div id="admin-feedback-section" style="margin-top: 12px; display:none;">
+                    <h4><i class="fas fa-comments"></i> User Feedbacks</h4>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                        <select id="feedback-filter-type" style="padding:6px; border-radius:6px; font-size:0.9rem;">
+                            <option value="">All Types</option>
+                            <option value="general">General</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="suggestion">Suggestion</option>
+                            <option value="complaint">Complaint</option>
+                            <option value="praise">Praise</option>
+                        </select>
+                        <input type="text" id="feedback-search" placeholder="Search feedbacks..." style="padding:6px; border-radius:6px; border:1px solid #ddd; flex:1; font-size:0.9rem;" />
+                        <button id="feedback-clear-filters" class="btn btn-sm btn-outline">Clear</button>
+                    </div>
+                    <div id="admin-feedback-list" style="max-height:400px; overflow:auto; border:1px solid #eee; border-radius:6px; padding:8px; background:#fafafa;">
+                        <div style="text-align:center; color:#999; padding:20px;">Loading feedbacks...</div>
+                    </div>
+                </div>
+
+                <!-- Feedback Detail Modal -->
+                <div id="admin-feedback-detail-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:10000;">
+                    <div style="background:#fff; max-width:700px; margin:40px auto; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3 id="feedback-detail-title">Feedback Details</h3>
+                            <button id="close-feedback-detail-modal" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                        </div>
+                        
+                        <div id="feedback-detail-content">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-users" style="margin-top: 12px;">
+                    <h4>Users</h4>
+                    <div id="admin-users-list">Loading users...</div>
+                </div>
+
+                <div id="admin-usage" style="margin-top: 16px;">
+                    <h4>Usage Analytics</h4>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div><strong>Today:</strong> <span id="usage-today">--</span></div>
+                        <div><strong>Last 7 days:</strong> <span id="usage-week">--</span></div>
+                        <div><strong>Last 30 days:</strong> <span id="usage-month">--</span></div>
+                        <div><strong>Last year:</strong> <span id="usage-year">--</span></div>
+                    </div>
+                    <div id="usage-breakdown" style="margin-top:8px; font-size:0.95rem; color:#444;">Loading breakdown...</div>
+                    <div style="margin-top:10px;">
+                        <canvas id="usage-chart" width="800" height="120" aria-label="Usage chart" role="img"></canvas>
+                    </div>
+                </div>
+
+                <div id="admin-events" style="margin-top: 16px;">
+                    <h4>Event Viewer</h4>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                        <label style="font-size:0.9rem; color:#666;">Filter:</label>
+                        <select id="event-filter-type" style="padding:6px; border-radius:6px;">
+                            <option value="">All types</option>
+                            <option value="page_view">page_view</option>
+                            <option value="calculate_route">calculate_route</option>
+                            <option value="api_call">api_call</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline" id="event-refresh">Refresh</button>
+                    </div>
+                    <div id="events-sparkline" style="height:48px; margin-bottom:8px;"></div>
+                    <div style="max-height:260px; overflow:auto; border:1px solid #eee; border-radius:6px;">
+                        <table class="table" style="margin:0; font-size:0.9rem;">
+                            <thead style="background:#fafafa; position:sticky; top:0; z-index:1;"><tr><th>When</th><th>Event</th><th>User</th><th>Info</th></tr></thead>
+                            <tbody id="events-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex; justify-content:center; gap:8px; margin-top:8px;">
+                        <button class="btn btn-sm btn-secondary" id="events-prev">Prev</button>
+                        <span id="events-page">1</span>
+                        <button class="btn btn-sm btn-secondary" id="events-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Update Map Data modal -->
+                <div id="admin-update-map-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                    <div style="background:#fff; max-width:760px; margin:40px auto; padding:16px; border-radius:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 id="update-map-modal-title">Update Map Data (Add POI)</h3>
+                            <button id="close-update-map-modal">Close</button>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div class="form-group">
+                                <label for="poi-id">POI ID</label>
+                                <input type="text" id="poi-id" style="width:100%; padding:8px;" placeholder="unique_id" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="poi-name">Name</label>
+                                <input type="text" id="poi-name" style="width:100%; padding:8px;" placeholder="Building Name" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                                <div>
+                                    <label for="poi-name-am">Name (Amharic)</label>
+                                    <input type="text" id="poi-name-am" style="width:100%; padding:8px;" placeholder="አማርኛ ስም" />
+                                </div>
+                                <div>
+                                    <label for="poi-name-ti">Name (Tigrigna)</label>
+                                    <input type="text" id="poi-name-ti" style="width:100%; padding:8px;" placeholder="ትግርኛ ስም" />
+                                </div>
+                                <div>
+                                    <label for="poi-name-om">Name (Afaan Oromo)</label>
+                                    <input type="text" id="poi-name-om" style="width:100%; padding:8px;" placeholder="Afaan Oromoo" />
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top:8px; display:flex; gap:8px;">
+                                <div style="flex:1;">
+                                    <label for="poi-lat">Latitude</label>
+                                    <input type="number" step="0.000001" id="poi-lat" style="width:100%; padding:8px;" placeholder="lat" />
+                                </div>
+                                <div style="flex:1;">
+                                    <label for="poi-lng">Longitude</label>
+                                    <input type="number" step="0.000001" id="poi-lng" style="width:100%; padding:8px;" placeholder="lng" />
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="poi-category">Category</label>
+                                <select id="poi-category" style="width:100%; padding:8px;">
+                                    <option value="administrative">Administrative</option>
+                                    <option value="academic">Academic</option>
+                                    <option value="services">Services</option>
+                                    <option value="recreational">Recreational</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="poi-description">Description</label>
+                                <textarea id="poi-description" rows="4" style="width:100%; padding:8px;"></textarea>
+                            </div>
+                            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+                                <button id="submit-update-map" class="btn btn-primary">Add POI</button>
+                                <button id="cancel-update-map" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Change Password modal -->
+                <div id="admin-change-password-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                    <div style="background:#fff; max-width:520px; margin:6% auto; padding:16px; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3>Change Password</h3>
+                            <button id="close-change-password-modal">Close</button>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div class="form-group">
+                                <label for="current-password">Current password</label>
+                                <input id="current-password" type="password" style="width:100%; padding:8px;" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="new-password">New password</label>
+                                <input id="new-password" type="password" style="width:100%; padding:8px;" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="confirm-password">Confirm new password</label>
+                                <input id="confirm-password" type="password" style="width:100%; padding:8px;" />
+                            </div>
+                            <div id="change-password-status" style="margin-top:8px;"></div>
+                            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+                                <button id="cancel-change-password" class="btn btn-secondary">Cancel</button>
+                                <button id="submit-change-password" class="btn btn-primary">Change Password</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Bounds modal (relocated bounds inputs) -->
+                <div id="admin-bounds-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                    <div style="background:#fff; max-width:640px; margin:6% auto; padding:16px; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3>Edit Campus Bounds</h3>
+                            <button id="close-bounds-modal">Close</button>
+                        </div>
+                        <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <label for="bound-north">North (lat)</label>
+                                <input id="bound-north" type="number" step="0.000001" style="width:100%; padding:8px;" />
+                            </div>
+                            <div>
+                                <label for="bound-south">South (lat)</label>
+                                <input id="bound-south" type="number" step="0.000001" style="width:100%; padding:8px;" />
+                            </div>
+                            <div>
+                                <label for="bound-east">East (lng)</label>
+                                <input id="bound-east" type="number" step="0.000001" style="width:100%; padding:8px;" />
+                            </div>
+                            <div>
+                                <label for="bound-west">West (lng)</label>
+                                <input id="bound-west" type="number" step="0.000001" style="width:100%; padding:8px;" />
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+                            <button id="cancel-bounds-btn" class="btn btn-secondary">Cancel</button>
+                            <button id="save-bounds-btn" class="btn btn-primary">Save Bounds</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-feedback" style="margin-top: 12px; display: none;">
+                    <h4>Feedback</h4>
+                    <div id="admin-feedback-list">No feedback loaded</div>
+                    <!-- Feedback modal -->
+                    <div id="feedback-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                        <div style="background:#fff; max-width:760px; margin:40px auto; padding:16px; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 id="feedback-modal-title">Feedback Detail</h3>
+                                <button class="close-feedback-modal">Close</button>
+                            </div>
+                            <div id="feedback-modal-body" style="margin-top:12px;"></div>
+                            <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+                                <button id="feedback-mark-resolved" class="btn btn-primary">Mark Resolved</button>
+                                <button id="feedback-mark-reviewed" class="btn btn-secondary">Mark Reviewed</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Broadcast modal -->
+                <div id="admin-broadcast-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                    <div style="background:#fff; max-width:760px; margin:40px auto; padding:16px; border-radius:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 id="broadcast-modal-title">Send Notification</h3>
+                            <button id="close-broadcast-modal">Close</button>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div class="form-group">
+                                <label for="broadcast-title">Title</label>
+                                <input type="text" id="broadcast-title" style="width:100%; padding:8px;" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="broadcast-message">Message</label>
+                                <textarea id="broadcast-message" rows="6" style="width:100%; padding:8px;"></textarea>
+                            </div>
+                            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+                                <label style="display:flex; align-items:center; gap:8px; margin-right:auto; font-size:0.9rem; color:#555;">
+                                    Expire (hours):
+                                    <input id="broadcast-expires-hours" type="number" min="1" max="168" value="24" style="width:80px; padding:6px; border-radius:6px;" />
+                                </label>
+                                <button id="send-broadcast-btn" class="btn btn-primary">Send to Users</button>
+                                <button id="cancel-broadcast-btn" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Broadcast edit modal -->
+                <div id="admin-broadcast-edit-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5);">
+                    <div style="background:#fff; max-width:640px; margin:40px auto; padding:16px; border-radius:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 id="broadcast-edit-title">Edit Broadcast</h3>
+                            <button id="close-broadcast-edit-modal">Close</button>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <input type="hidden" id="edit-broadcast-id" />
+                            <div class="form-group">
+                                <label for="edit-broadcast-title">Title</label>
+                                <input type="text" id="edit-broadcast-title" style="width:100%; padding:8px;" />
+                            </div>
+                            <div class="form-group" style="margin-top:8px;">
+                                <label for="edit-broadcast-message">Message</label>
+                                <textarea id="edit-broadcast-message" rows="6" style="width:100%; padding:8px;"></textarea>
+                            </div>
+                            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+                                <label style="display:flex; align-items:center; gap:8px; margin-right:auto; font-size:0.9rem; color:#555;">
+                                    Expire (hours):
+                                    <input id="edit-broadcast-expires-hours" type="number" min="1" max="168" value="24" style="width:80px; padding:6px; border-radius:6px;" />
+                                </label>
+                                <button id="update-broadcast-btn" class="btn btn-primary">Update</button>
+                                <button id="delete-broadcast-btn" class="btn btn-danger">Delete</button>
+                                <button id="cancel-broadcast-edit-btn" class="btn btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create-user removed: admins should not create users via UI -->
+
+                <!-- Notification List Modal (View all sent notifications) -->
+                <div id="admin-notification-list-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:9999;">
+                    <div style="background:#fff; max-width:900px; margin:40px auto; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3>All Sent Notifications</h3>
+                            <button id="close-notification-list-modal" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                        </div>
+                        
+                        <div style="margin-bottom:16px; display:flex; gap:8px;">
+                            <input type="text" id="notification-search" placeholder="Search by title..." style="flex:1; padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                            <button id="notification-search-btn" class="btn btn-sm btn-primary">Search</button>
+                            <button id="notification-clear-search" class="btn btn-sm btn-outline">Clear</button>
+                        </div>
+                        
+                        <div id="admin-notification-list" style="border:1px solid #eee; border-radius:6px; overflow:auto; max-height:500px;">
+                            <div style="text-align:center; color:#999; padding:20px;">Loading notifications...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Notification Modal -->
+                <div id="admin-edit-notification-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:9999;">
+                    <div style="background:#fff; max-width:700px; margin:40px auto; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3>Edit Notification</h3>
+                            <button id="close-edit-notification-modal" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                        </div>
+                        
+                        <input type="hidden" id="edit-notification-id" />
+                        
+                        <div class="form-group">
+                            <label for="edit-notification-title">Title</label>
+                            <input type="text" id="edit-notification-title" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;" maxlength="200" />
+                            <div style="font-size:0.85rem; color:#999; margin-top:4px;">
+                                <span id="edit-notification-title-count">0</span>/200 characters
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top:12px;">
+                            <label for="edit-notification-content">Content</label>
+                            <textarea id="edit-notification-content" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;" rows="6" maxlength="2000"></textarea>
+                            <div style="font-size:0.85rem; color:#999; margin-top:4px;">
+                                <span id="edit-notification-content-count">0</span>/2000 characters
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top:12px;">
+                            <label style="display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" id="edit-notification-status" />
+                                <span>Active</span>
+                            </label>
+                        </div>
+                        
+                        <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
+                            <button id="save-edit-notification-btn" class="btn btn-primary">Save</button>
+                            <button id="delete-edit-notification-btn" class="btn btn-danger">Delete</button>
+                            <button id="cancel-edit-notification-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Notification Modal -->
+                <div id="admin-new-notification-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:9999;">
+                    <div style="background:#fff; max-width:700px; margin:40px auto; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3>Create New Notification</h3>
+                            <button id="close-new-notification-modal" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                        </div>
+                        
+                        <div id="new-notification-message" style="margin-bottom:12px; padding:8px; border-radius:6px; display:none;"></div>
+                        
+                        <div class="form-group">
+                            <label for="new-notification-title">Title</label>
+                            <input type="text" id="new-notification-title" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;" placeholder="Notification title" maxlength="200" />
+                            <div style="font-size:0.85rem; color:#999; margin-top:4px;">
+                                <span id="new-notification-title-count">0</span>/200 characters
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top:12px;">
+                            <label for="new-notification-content">Content</label>
+                            <textarea id="new-notification-content" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;" rows="6" placeholder="Notification content" maxlength="2000"></textarea>
+                            <div style="font-size:0.85rem; color:#999; margin-top:4px;">
+                                <span id="new-notification-content-count">0</span>/2000 characters
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top:12px;">
+                            <label for="new-notification-priority">Priority</label>
+                            <select id="new-notification-priority" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
+                            <button id="send-new-notification-btn" class="btn btn-primary">Send to All Users</button>
+                            <button id="cancel-new-notification-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+        </div>
+    </div>
+
+    <!-- User Notification Detail Modal -->
+    <div id="user-notification-detail-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:9998;">
+        <div style="background:#fff; max-width:600px; margin:40px auto; padding:20px; border-radius:8px; max-height:80vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 id="user-notif-detail-title">Notification</h3>
+                <button id="close-user-notification-detail" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            
+            <div id="user-notif-detail-content" style="line-height: 1.6; color: #333;">
+                <div id="user-notif-detail-message" style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 4px solid #1a5f7a;"></div>
+                <div style="font-size: 0.9rem; color: #666;">
+                    <div style="margin-bottom: 8px;"><strong>Date:</strong> <span id="user-notif-detail-date"></span></div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="close-user-notification-detail-btn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 data-i18n="footer.title">DTU Navigation</h3>
+                <p data-i18n="footer.description">The official campus navigation system of Debre Tabor University, helping students, staff, and visitors find their way around campus efficiently.</p>
+                <div class="social-media-links">
+                    <a href="https://www.instagram.com/netsanet_degu_21/" target="_blank" rel="noopener noreferrer" title="Instagram" class="social-icon">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.facebook.com/Netsanet-Degu-100087654321/" target="_blank" rel="noopener noreferrer" title="Facebook" class="social-icon">
+                        <i class="fab fa-facebook"></i>
+                    </a>
+                    <a href="http://t.me/Freedom_Ze_Great" target="_blank" rel="noopener noreferrer" title="Telegram" class="social-icon">
+                        <i class="fab fa-telegram"></i>
+                    </a>
+                    <a href="https://twitter.com/Netsanet_Degu21" target="_blank" rel="noopener noreferrer" title="Twitter" class="social-icon">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3 data-i18n="footer.quick_links_title">Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="#" id="footer-home"><i class="fas fa-home"></i> <span data-i18n="footer.links.home">Home</span></a></li>
+                    <li><a href="#" id="footer-map"><i class="fas fa-map"></i> <span data-i18n="footer.links.map">Campus Map</span></a></li>
+                    <li><a href="#" id="footer-buildings"><i class="fas fa-building"></i> <span data-i18n="footer.links.buildings">Building Directory</span></a></li>
+                    <li><a href="#" id="footer-events"><i class="fas fa-calendar"></i> <span data-i18n="footer.links.events">Events</span></a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3 data-i18n="footer.resources_title">Resources</h3>
+                <ul class="footer-links">
+                    <li><a href="#" id="footer-feedback"><i class="fas fa-comment"></i> <span data-i18n="footer.resources.feedback">Feedback</span></a></li>
+                    <li><a href="#" id="footer-help"><i class="fas fa-question-circle"></i> <span data-i18n="footer.resources.help">Help Center</span></a></li>
+                    <li><a href="#" id="footer-mobile"><i class="fas fa-mobile-alt"></i> <span data-i18n="footer.resources.mobile">Mobile App</span></a></li>
+                    <li><a href="#" id="footer-accessibility"><i class="fas fa-universal-access"></i> <span data-i18n="footer.resources.accessibility">Accessibility</span></a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3 data-i18n="footer.contact_title">Contact Us</h3>
+                <ul class="footer-links">
+                    <li><a href="#" id="footer-address"><i class="fas fa-map-marker-alt"></i> <span data-i18n="footer.contact.address">Debre Tabor, Ethiopia</span></a></li>
+                    <li><a href="tel:+251581410495" id="footer-phone"><i class="fas fa-phone"></i> <span data-i18n="footer.contact.phone">+251-58-1410495</span></a></li>
+                    <li><a href="mailto:info@dtu.edu.et" id="footer-email"><i class="fas fa-envelope"></i> <span data-i18n="footer.contact.email">info@dtu.edu.et</span></a></li>
+                    <li><a href="#" id="footer-hours"><i class="fas fa-clock"></i> <span data-i18n="footer.contact.hours">Mon-Fri: 8:00 AM - 5:00 PM</span></a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            <p data-i18n="footer.copyright">&copy; 2026 DTU Computer Science students. | Group Four. All rights reserved. | Campus Navigation System v1.0</p>
+        </div>
+    </footer>
+
+    <!-- User Feedback Modal -->
+    <div id="user-feedback-modal" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:2000;">
+        <div style="background:#fff; max-width:760px; margin:40px auto; padding:16px; border-radius:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="user-feedback-title" data-i18n="feedback.title">Send Feedback</h3>
+                <button id="close-user-feedback">Close</button>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="form-group">
+                    <label for="fb-type" data-i18n="feedback.type_label">Type</label>
+                    <select id="fb-type" style="width:100%; padding:8px;">
+                        <option value="general">General</option>
+                        <option value="bug">Bug</option>
+                        <option value="suggestion">Suggestion</option>
+                        <option value="complaint">Complaint</option>
+                        <option value="praise">Praise</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fb-title" data-i18n="feedback.title_label">Title</label>
+                    <input id="fb-title" type="text" style="width:100%; padding:8px;" />
+                </div>
+                <div class="form-group">
+                    <label for="fb-rating" data-i18n="feedback.rating_label">Rating</label>
+                    <div id="fb-rating" style="font-size:1.4rem; color:#ffb400;">★★★★★</div>
+                    <input type="hidden" id="fb-rating-value" value="0" />
+                </div>
+                <div class="form-group">
+                    <label for="fb-related" data-i18n="feedback.related_label">Related Place (optional)</label>
+                    <input id="fb-related" list="poi-suggestions" style="width:100%; padding:8px;" placeholder="Select related place (optional)" data-i18n-placeholder="feedback.related_placeholder" />
+                    <input type="hidden" id="fb-related-id" />
+                    <datalist id="poi-suggestions"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="fb-name" data-i18n="feedback.name_label">Your name (optional)</label>
+                    <input id="fb-name" type="text" style="width:100%; padding:8px;" placeholder="Your name (optional)" data-i18n-placeholder="feedback.name_placeholder" />
+                </div>
+                <div class="form-group">
+                    <label for="fb-email" data-i18n="feedback.email_label">Your email (optional)</label>
+                    <input id="fb-email" type="email" style="width:100%; padding:8px;" placeholder="Your email (optional)" data-i18n-placeholder="feedback.email_placeholder" />
+                </div>
+                <div class="form-group">
+                    <label for="fb-message" data-i18n="feedback.message_label">Message</label>
+                    <textarea id="fb-message" rows="6" style="width:100%; padding:8px;" data-i18n-placeholder="feedback.message_placeholder"></textarea>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+                    <button id="submit-feedback-btn" class="btn btn-primary" data-i18n="feedback.submit">Submit Feedback</button>
+                    <button id="cancel-feedback-btn" class="btn btn-secondary" data-i18n="feedback.cancel">Cancel</button>
+                </div>
+                <div id="feedback-status" style="margin-top:8px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin POI Management Panel -->
+    <div id="admin-poi-management-panel" class="modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:3000;">
+        <div style="background:#fff; max-width:1000px; margin:20px auto; padding:20px; border-radius:8px; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2><i class="fas fa-map-pin"></i> POI Management</h2>
+                <button id="admin-poi-panel-close" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- POI Form -->
+            <div id="admin-poi-form" style="display:none; background:#f9f9f9; padding:16px; border-radius:6px; margin-bottom:20px; border:1px solid #eee;">
+                <h3 id="admin-poi-form-title">Add New POI</h3>
+                <div id="admin-poi-form-error" style="display:none; background:#fee; color:#c33; padding:8px; border-radius:4px; margin-bottom:12px;"></div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label for="admin-poi-name">Name *</label>
+                        <input type="text" id="admin-poi-name" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="POI Name" />
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-poi-building">Building *</label>
+                        <input type="text" id="admin-poi-building" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="Building Name" />
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:12px;">
+                    <label for="admin-poi-description">Description *</label>
+                    <textarea id="admin-poi-description" rows="3" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="POI Description"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:12px;">
+                    <div class="form-group">
+                        <label for="admin-poi-category">Category *</label>
+                        <select id="admin-poi-category" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
+                            <option value="academic">Academic</option>
+                            <option value="administrative">Administrative</option>
+                            <option value="residential">Residential</option>
+                            <option value="services">Services</option>
+                            <option value="recreational">Recreational</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-poi-latitude">Latitude *</label>
+                        <input type="number" step="0.000001" id="admin-poi-latitude" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="-90 to 90" />
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-poi-longitude">Longitude *</label>
+                        <input type="number" step="0.000001" id="admin-poi-longitude" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="-180 to 180" />
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+                    <div class="form-group">
+                        <label for="admin-poi-floor">Floor</label>
+                        <input type="text" id="admin-poi-floor" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="Ground Floor" />
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-poi-opening-hours">Opening Hours</label>
+                        <input type="text" id="admin-poi-opening-hours" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;" placeholder="e.g., 8:00 AM - 5:00 PM" />
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-top:16px; justify-content:flex-end;">
+                    <button id="admin-poi-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button id="admin-poi-submit-btn" class="btn btn-primary">Add POI</button>
+                </div>
+            </div>
+
+            <!-- POI List -->
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3>POIs</h3>
+                    <button id="admin-poi-add-new-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add New POI
+                    </button>
+                </div>
+                <div id="admin-poi-list" style="max-height:500px; overflow-y:auto; border:1px solid #eee; border-radius:6px; padding:12px;">
+                    Loading POIs...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .admin-poi-category {
+            margin-bottom: 16px;
+        }
+
+        .admin-poi-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .admin-poi-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            transition: all 0.2s;
+        }
+
+        .admin-poi-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-color: #999;
+        }
+
+        .admin-poi-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .admin-poi-item-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .admin-poi-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .admin-poi-item-details {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .admin-poi-item-details div {
+            display: flex;
+            gap: 8px;
+        }
+
+        .admin-poi-item-details strong {
+            min-width: 100px;
+        }
+    </style>
+
+    <script src="all_pois_loader.js"></script>
+    <script src="admin-poi-management.js"></script>
+    <script src="location-diagnostic.js"></script>
+    <script>
+        // Use local images from frontend/asset for the background slideshow
+        window.SLIDESHOW_IMAGES = [
+            'asset/dtu-hero (1).jpg',
+            'asset/dtu-hero (2).jpg',
+            'asset/dtu-hero (3).jpg',
+            'asset/dtu-hero (4).jpg',
+            'asset/dtu-hero (5).jpg',
+            'asset/dtu-hero (6).jpg'
+        ].map(function(p){ return p; });
+    </script>
+    <script src="bg-slideshow.js" defer></script>
+    <script src="index.js"></script>
+    <script src="notification-diagnostic.js" defer></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,19 @@
+{
+  "name": "dtu-campus-navigation-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for DTU Campus Navigation System",
+  "main": "index.html",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "open": "^11.0.0"
+  },
+  "devDependencies": {
+    "fast-check": "^4.4.0",
+    "jsdom": "^27.4.0",
+    "live-server": "^1.2.0",
+    "vitest": "^4.0.15"
+  }
+}
