@@ -1009,15 +1009,15 @@
     <script src="admin-poi-management.js"></script>
     <script src="location-diagnostic.js"></script>
     <script>
-        // Use local images from frontend/asset for the background slideshow
+        // Use local images from frontend/asset for the background slideshow.
+        // bg-slideshow.js drops any entry that fails to load, so adding a
+        // missing file here degrades gracefully instead of blanking the page.
         window.SLIDESHOW_IMAGES = [
-            'asset/dtu-hero (1).jpg',
-            'asset/dtu-hero (2).jpg',
-            'asset/dtu-hero (3).jpg',
-            'asset/dtu-hero (4).jpg',
-            'asset/dtu-hero (5).jpg',
-            'asset/dtu-hero (6).jpg'
-        ].map(function(p){ return p; });
+            'asset/photo_1_2026-09-28_14-57-47.jpg',
+            'asset/photo_2_2026-09-28_14-57-47.jpg',
+            'asset/photo_3_2026-09-28_14-57-47.jpg',
+            'asset/photo_4_2026-09-28_14-57-47.jpg'
+        ];
     </script>
     <script src="bg-slideshow.js" defer></script>
     <script src="index.js"></script>
