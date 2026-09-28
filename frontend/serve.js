@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-// Lightweight static server for frontend — zero dependencies
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
